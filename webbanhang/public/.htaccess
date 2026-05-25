@@ -1,0 +1,3 @@
+# Cho phép truy cập trực tiếp tất cả file trong thư mục public
+Options -Indexes
+RewriteEngine Off

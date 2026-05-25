@@ -46,29 +46,34 @@ class ProductController
         include_once 'app/views/product/add.php';
     }
 
-    // Hàm xử lý upload file ảnh dùng chung (Đã nâng cấp bảo mật)
+    // Hàm xử lý upload file ảnh dùng chung
     private function uploadImage()
     {
         if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-            $target_dir = "public/images/";
-            
-            // Tự động tạo thư mục chứa ảnh nếu hệ thống chưa có
+            // Dùng đường dẫn tuyệt đối từ vị trí file controller này
+            // __DIR__ = .../webbanhang/app/controllers
+            $base_dir = dirname(dirname(__DIR__)); // = .../webbanhang
+            $target_dir = $base_dir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR;
+
+            // Tự động tạo thư mục nếu chưa có
             if (!file_exists($target_dir)) {
                 mkdir($target_dir, 0777, true);
             }
 
-            // Đổi tên file bằng hàm time() để tránh trùng tên ảnh
+            // Đổi tên file bằng time() để tránh trùng
             $file_name = time() . '_' . basename($_FILES["image"]["name"]);
+            // Thay khoảng trắng trong tên file bằng dấu gạch dưới
+            $file_name = str_replace(' ', '_', $file_name);
             $target_file = $target_dir . $file_name;
             $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
 
-            // 1. Kiểm tra định dạng đuôi file mở rộng
+            // Kiểm tra định dạng đuôi file
             $valid_extensions = array("jpg", "jpeg", "png", "gif", "webp");
             if (!in_array($imageFileType, $valid_extensions)) {
                 return '';
             }
 
-            // 2. BẢO MẬT: Kiểm tra nội dung file có phải là ảnh thật không (chống mã độc shell script)
+            // Kiểm tra nội dung file có phải ảnh thật không
             $check = getimagesize($_FILES["image"]["tmp_name"]);
             if ($check === false) {
                 return '';
@@ -118,7 +123,7 @@ class ProductController
         }
     }
 
-    // Action xử lý cập nhật sản phẩm (Đã sửa lỗi giữ ảnh cũ và dọn dẹp ảnh rác)
+    // Action xử lý cập nhật sản phẩm
     public function update()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -128,23 +133,22 @@ class ProductController
             $price = $_POST['price'];
             $category_id = $_POST['category_id'];
             
-            // 1. Lấy thông tin sản phẩm hiện tại để tìm tên file ảnh cũ
             $currentProduct = $this->productModel->getProductById($id);
             $old_image = $currentProduct ? $currentProduct->image : '';
 
-            // 2. Kiểm tra xem người dùng có chọn file ảnh mới hay không
             $new_image = $this->uploadImage();
-            
-            // Nếu có ảnh mới thì sử dụng ảnh mới, ngược lại giữ nguyên tên ảnh cũ
             $image_to_save = !empty($new_image) ? $new_image : $old_image;
             
-            // 3. Cập nhật vào cơ sở dữ liệu
             $edit = $this->productModel->updateProduct($id, $name, $description, $price, $category_id, $image_to_save);
             
             if ($edit) {
-                // Nếu cập nhật thành công VÀ có upload ảnh mới -> Tiến hành xóa file ảnh cũ trên ổ đĩa server
-                if (!empty($new_image) && !empty($old_image) && file_exists("public/images/" . $old_image)) {
-                    unlink("public/images/" . $old_image);
+                // Xóa ảnh cũ nếu có ảnh mới
+                if (!empty($new_image) && !empty($old_image)) {
+                    $base_dir = dirname(dirname(__DIR__));
+                    $old_path = $base_dir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $old_image;
+                    if (file_exists($old_path)) {
+                        unlink($old_path);
+                    }
                 }
                 header('Location: /webbanhang/Product');
             } else {
@@ -153,20 +157,22 @@ class ProductController
         }
     }
 
-    // Action xóa sản phẩm (Đã thêm chức năng tự động xóa file ảnh vật lý trên Server)
+    // Action xóa sản phẩm
     public function delete($id)
     {
-        // 1. Lấy thông tin sản phẩm để lấy tên file ảnh trước khi thực hiện xóa dữ liệu
         $product = $this->productModel->getProductById($id);
         
         if ($product) {
             $image_name = $product->image;
             
-            // 2. Tiến hành xóa bản ghi trong Database
             if ($this->productModel->deleteProduct($id)) {
-                // 3. Xóa file ảnh vật lý nằm trong thư mục public/images/ nếu tồn tại
-                if (!empty($image_name) && file_exists("public/images/" . $image_name)) {
-                    unlink("public/images/" . $image_name);
+                // Xóa file ảnh vật lý nếu tồn tại
+                if (!empty($image_name)) {
+                    $base_dir = dirname(dirname(__DIR__));
+                    $img_path = $base_dir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $image_name;
+                    if (file_exists($img_path)) {
+                        unlink($img_path);
+                    }
                 }
                 header('Location: /webbanhang/Product');
             } else {

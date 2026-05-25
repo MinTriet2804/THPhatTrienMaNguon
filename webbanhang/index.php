@@ -1,6 +1,11 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once 'app/helpers.php';
 require_once 'app/models/ProductModel.php';
 require_once 'app/models/CategoryModel.php';
+require_once 'app/models/CartModel.php';
 
 $url = $_GET['url'] ?? '';
 $url = rtrim($url, '/');

@@ -1,9 +1,7 @@
-<?php include 'app/views/shares/header.php'; ?>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+include 'app/views/shares/header.php';
+?>
 
 <style>
     body {
@@ -198,6 +196,27 @@
         color: #fff !important;
         border-color: #d70018;
     }
+    /* Nút thêm vào giỏ hàng */
+    .btn-cps-cart {
+        display: block;
+        background-color: #d70018;
+        color: #fff !important;
+        font-weight: 600;
+        font-size: 0.88rem;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        text-decoration: none !important;
+        border: none;
+        transition: all 0.2s ease;
+        box-shadow: 0 3px 8px rgba(215,0,24,0.2);
+        width: 100%;
+    }
+    .btn-cps-cart:hover {
+        background-color: #b50013;
+        transform: translateY(-1px);
+        box-shadow: 0 5px 12px rgba(215,0,24,0.3);
+    }
 </style>
 
 <div class="container">
@@ -214,9 +233,10 @@
                 <div class="cps-product-card">
                     
                     <div class="cps-product-img-wrapper">
-                        <!-- Đồng bộ chính xác với thư mục public/images/ đã sửa đổi -->
-                        <?php if (!empty($product->image) && file_exists("public/images/" . $product->image)): ?>
-                            <img src="/webbanhang/public/images/<?php echo $product->image; ?>" alt="<?php echo htmlspecialchars($product->name, ENT_QUOTES, 'UTF-8'); ?>">
+                        <?php if (!empty($product->image)): ?>
+                            <img src="<?php echo imageUrl($product->image); ?>"
+                                 alt="<?php echo htmlspecialchars($product->name, ENT_QUOTES, 'UTF-8'); ?>"
+                                 onerror="handleImgError(this);">
                         <?php else: ?>
                             <div class="cps-no-image">
                                 <i class="fas fa-image fa-2x"></i>
@@ -250,13 +270,18 @@
                                 ?>
                             </div>
                             
-                            <div class="cps-action-box">
+                            <!-- Nút thêm vào giỏ hàng -->
+                            <a href="/webbanhang/Cart/add/<?php echo $product->id; ?>" class="btn-cps-cart">
+                                <i class="fas fa-cart-plus"></i> Thêm vào giỏ
+                            </a>
+
+                            <div class="cps-action-box" style="margin-top:8px;">
                                 <a href="/webbanhang/Product/edit/<?php echo $product->id; ?>" class="btn-cps-edit">
                                     <i class="fas fa-pen"></i> Sửa
                                 </a>
                                 <a href="/webbanhang/Product/delete/<?php echo $product->id; ?>" 
                                    class="btn-cps-delete" 
-                                   onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này? Hệ thống sẽ gỡ bỏ vĩnh viễn hình ảnh đính kèm trên máy chủ.');">
+                                   onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này?');">
                                     <i class="fas fa-trash-alt"></i> Xóa
                                 </a>
                             </div>
@@ -273,5 +298,12 @@
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+function handleImgError(image) {
+    image.onerror = null; // Ngăn lặp vô hạn nếu ảnh thay thế cũng lỗi
+    image.parentElement.innerHTML = '<div class="cps-no-image"><i class="fas fa-image fa-2x"></i>Không tìm thấy file ảnh</div>';
+}
+</script>
 
 <?php include 'app/views/shares/footer.php'; ?>

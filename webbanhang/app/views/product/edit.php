@@ -1,9 +1,7 @@
-<?php include 'app/views/shares/header.php'; ?>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+include 'app/views/shares/header.php';
+?>
 
 <style>
     body {
@@ -170,10 +168,15 @@
                 <div class="form-group">
                     <label for="image"><i class="fas fa-image"></i> Hình ảnh sản phẩm</label>
                     
-                    <?php if (!empty($product->image) && file_exists("public/images/" . $product->image)): ?>
+                    <?php
+                    if (!empty($product->image)):
+                    ?>
                         <div class="mb-3 p-2 bg-light text-center border" style="border-radius: 8px; max-width: 150px;">
                             <span class="text-muted d-block small mb-1">Ảnh hiện tại:</span>
-                            <img src="/webbanhang/public/images/<?php echo $product->image; ?>" alt="Product Image" style="max-height: 100px; max-width: 100%; object-fit: contain;">
+                            <img src="<?php echo imageUrl($product->image); ?>"
+                                 alt="Ảnh hiện tại"
+                                 style="max-height: 100px; max-width: 100%; object-fit: contain;"
+                                 onerror="this.parentElement.innerHTML='<span class=\'text-danger small\'><i class=\'fas fa-exclamation-circle\'></i> Không tìm thấy file ảnh</span>'">
                         </div>
                     <?php endif; ?>
                     

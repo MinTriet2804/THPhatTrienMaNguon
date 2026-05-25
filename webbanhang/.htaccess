@@ -1,4 +1,11 @@
 RewriteEngine On
+
+# Cho phép truy cập trực tiếp vào thư mục public (ảnh, css, js)
+RewriteRule ^public/ - [L]
+
+# Bỏ qua nếu là file hoặc thư mục thực sự tồn tại
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route tất cả request còn lại qua index.php
 RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
