@@ -2,13 +2,20 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Tính số lượng giỏ hàng cho badge
+
+// 1. Tính số lượng giỏ hàng cho badge
 $_cartCount = 0;
 if (!empty($_SESSION['cart'])) {
     foreach ($_SESSION['cart'] as $item) {
         $_cartCount += $item['quantity'];
     }
 }
+
+// 2. Kiểm tra thông tin người dùng đã đăng nhập
+$currentUser   = $_SESSION['username'] ?? null;
+$currentRole   = $_SESSION['role']     ?? 'guest';
+$currentAvatar = $_SESSION['avatar']   ?? '';
+$currentFullname = $_SESSION['fullname'] ?? $currentUser;
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -138,6 +145,11 @@ if (!empty($_SESSION['cart'])) {
         .btn-admin:hover {
             background: #fff0f0 !important;
         }
+        .user-greeting {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+            white-space: nowrap;
+        }
 
         /* ===== NAV MENU ===== */
         .cps-nav-menu {
@@ -210,18 +222,15 @@ if (!empty($_SESSION['cart'])) {
 </head>
 <body>
 
-    <!-- HEADER TOP -->
     <header class="cps-header-top">
         <div class="container-fluid px-md-5">
             <div class="row align-items-center">
-                <!-- Logo -->
                 <div class="col-lg-2 col-md-3 col-5">
                     <a href="/webbanhang/Product" class="cps-logo">
                         Tech<span class="logo-badge">S</span>
                     </a>
                 </div>
 
-                <!-- Thanh tìm kiếm -->
                 <div class="col-lg-5 d-none d-lg-block">
                     <div class="cps-search-wrapper">
                         <i class="fas fa-search cps-search-icon"></i>
@@ -229,16 +238,18 @@ if (!empty($_SESSION['cart'])) {
                     </div>
                 </div>
 
-                <!-- Nút hành động -->
                 <div class="col-lg-5 col-md-9 col-7">
                     <div class="header-actions">
                         <a href="/webbanhang/Product" class="btn-header-action d-none d-md-inline-flex">
                             <i class="fas fa-store"></i> Cửa hàng
                         </a>
-                        <a href="/webbanhang/Product/add" class="btn-header-action d-none d-md-inline-flex">
-                            <i class="fas fa-plus-circle"></i> Thêm SP
-                        </a>
-                        <!-- Giỏ hàng -->
+
+                        <?php if ($currentUser): ?>
+                            <a href="/webbanhang/Product/add" class="btn-header-action d-none d-md-inline-flex">
+                                <i class="fas fa-plus-circle"></i> Thêm SP
+                            </a>
+                        <?php endif; ?>
+
                         <a href="/webbanhang/Cart" class="btn-header-action btn-cart">
                             <i class="fas fa-shopping-cart"></i>
                             <span class="d-none d-sm-inline">Giỏ hàng</span>
@@ -246,17 +257,75 @@ if (!empty($_SESSION['cart'])) {
                                 <span class="cart-badge"><?php echo $_cartCount > 99 ? '99+' : $_cartCount; ?></span>
                             <?php endif; ?>
                         </a>
-                        <!-- Quản lý -->
-                        <a href="/webbanhang/Category" class="btn-header-action btn-admin d-none d-lg-inline-flex">
-                            <i class="fas fa-cog"></i> Quản lý
-                        </a>
+
+                        <?php if ($currentUser): ?>
+                            <a href="/webbanhang/Category" class="btn-header-action btn-admin d-none d-lg-inline-flex">
+                                <i class="fas fa-cog"></i> Quản lý
+                            </a>
+                            <!-- Dropdown thông tin user -->
+                            <div class="dropdown d-none d-sm-inline-block ml-1">
+                                <button class="btn-header-action dropdown-toggle" type="button"
+                                        id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                        style="background:rgba(255,255,255,0.15);border-radius:8px;border:1px solid rgba(255,255,255,0.3);">
+                                    <?php if (!empty($currentAvatar)): ?>
+                                        <img src="/webbanhang/img.php?f=<?= urlencode($currentAvatar) ?>"
+                                             alt="avatar"
+                                             style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-right:6px;border:2px solid rgba(255,255,255,0.5);">
+                                    <?php else: ?>
+                                        <i class="fas fa-user-circle mr-1"></i>
+                                    <?php endif; ?>
+                                    <span><?= htmlspecialchars($currentFullname, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php if ($currentRole === 'admin'): ?>
+                                        <span style="background:rgba(255,255,255,0.25);border-radius:10px;padding:1px 7px;font-size:0.72rem;margin-left:4px;">
+                                            <i class="fas fa-crown"></i> Admin
+                                        </span>
+                                    <?php endif; ?>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown"
+                                     style="border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);border:none;min-width:200px;">
+                                    <div class="px-3 py-2 border-bottom">
+                                        <div class="font-weight-700 text-dark"><?= htmlspecialchars($currentFullname, ENT_QUOTES, 'UTF-8') ?></div>
+                                        <small class="text-muted">@<?= htmlspecialchars($currentUser, ENT_QUOTES, 'UTF-8') ?></small>
+                                    </div>
+                                    <a class="dropdown-item" href="/webbanhang/account/profile">
+                                        <i class="fas fa-id-card mr-2 text-primary"></i>Hồ sơ cá nhân
+                                    </a>
+                                    <a class="dropdown-item" href="/webbanhang/account/changePassword">
+                                        <i class="fas fa-key mr-2 text-warning"></i>Đổi mật khẩu
+                                    </a>
+                                    <?php if ($currentRole === 'admin'): ?>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item" href="/webbanhang/account/manageUsers">
+                                            <i class="fas fa-users-cog mr-2 text-danger"></i>Quản lý người dùng
+                                        </a>
+                                        <a class="dropdown-item" href="/webbanhang/Category">
+                                            <i class="fas fa-folder-open mr-2 text-secondary"></i>Quản lý danh mục
+                                        </a>
+                                        <a class="dropdown-item" href="/webbanhang/Order">
+                                            <i class="fas fa-clipboard-list mr-2 text-secondary"></i>Quản lý đơn hàng
+                                        </a>
+                                    <?php endif; ?>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item text-danger" href="/webbanhang/account/logout">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>Đăng xuất
+                                    </a>
+                                </div>
+                            </div>
+                            <!-- Nút logout nhỏ trên mobile -->
+                            <a href="/webbanhang/account/logout" class="btn-header-action text-warning d-sm-none ml-1" title="Đăng xuất">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </a>
+                        <?php else: ?>
+                            <a href="/webbanhang/account/login" class="btn-header-action text-white">
+                                <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- NAV MENU DANH MỤC -->
     <nav class="cps-nav-menu">
         <div class="container-fluid px-md-5">
             <ul class="cps-menu-list">
@@ -278,29 +347,27 @@ if (!empty($_SESSION['cart'])) {
                 <li class="cps-menu-item">
                     <a href="/webbanhang/Product/category/5"><i class="fas fa-headphones"></i> Âm thanh</a>
                 </li>
-                <li class="cps-menu-item" style="margin-left:auto;">
-                    <a href="/webbanhang/Cart" style="color:#d70018;">
-                        <i class="fas fa-shopping-cart"></i> Giỏ hàng
-                        <?php if ($_cartCount > 0): ?>
-                            <span style="background:#d70018;color:#fff;border-radius:10px;padding:1px 7px;font-size:0.75rem;margin-left:2px;"><?php echo $_cartCount; ?></span>
-                        <?php endif; ?>
-                    </a>
-                </li>
-                <li class="cps-menu-item">
-                    <a href="/webbanhang/Category" style="color:#888;">
-                        <i class="fas fa-folder-open"></i> Danh mục
-                    </a>
-                </li>
-                <li class="cps-menu-item">
-                    <a href="/webbanhang/Order" style="color:#888;">
-                        <i class="fas fa-clipboard-list"></i> Đơn hàng
-                    </a>
-                </li>
+
+                <?php if ($currentUser): ?>
+                    <li class="cps-menu-item" style="margin-left:auto;">
+                        <a href="/webbanhang/Category" style="color:#888;">
+                            <i class="fas fa-folder-open"></i> Danh mục
+                        </a>
+                    </li>
+                    <li class="cps-menu-item">
+                        <a href="/webbanhang/Order" style="color:#888;">
+                            <i class="fas fa-clipboard-list"></i> Đơn hàng
+                        </a>
+                    </li>
+                <?php endif; ?>
             </ul>
         </div>
     </nav>
 
-    <!-- BANNER -->
+    <?php 
+    $currentUri = $_SERVER['REQUEST_URI'];
+    if (strpos($currentUri, '/account/login') === false && strpos($currentUri, '/account/register') === false): 
+    ?>
     <div class="container-fluid px-md-5 cps-banner-container">
         <div class="cps-banner-wrapper">
             <div class="cps-banner-circle cps-banner-circle-1"></div>
@@ -312,6 +379,6 @@ if (!empty($_SESSION['cart'])) {
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-    <!-- MAIN CONTENT -->
     <div class="container-fluid px-md-5 main-content">

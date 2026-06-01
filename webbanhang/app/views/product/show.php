@@ -159,13 +159,28 @@ include 'app/views/shares/header.php';
 
                     <!-- Nút hành động -->
                     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
-                        <a href="/webbanhang/Cart/add/<?php echo $product->id; ?>" class="btn-add-cart">
-                            <i class="fas fa-cart-plus"></i> Thêm vào giỏ hàng
-                        </a>
-                        <a href="/webbanhang/Cart/add/<?php echo $product->id; ?>" class="btn-buy-now"
-                           onclick="sessionStorage.setItem('buyNow','1')">
-                            <i class="fas fa-bolt"></i> Mua ngay
-                        </a>
+                        <?php if (isset($_SESSION['user_id']) || isset($_SESSION['username'])): ?>
+                            <a href="/webbanhang/Cart/add/<?php echo $product->id; ?>" class="btn-add-cart">
+                                <i class="fas fa-cart-plus"></i> Thêm vào giỏ hàng
+                            </a>
+                            <a href="/webbanhang/Cart/add/<?php echo $product->id; ?>" class="btn-buy-now"
+                               onclick="sessionStorage.setItem('buyNow','1')">
+                                <i class="fas fa-bolt"></i> Mua ngay
+                            </a>
+                        <?php else: ?>
+                            <a href="/webbanhang/account/login" class="btn-add-cart"
+                               onclick="sessionStorage.setItem('pendingCart','<?php echo $product->id; ?>')">
+                                <i class="fas fa-sign-in-alt"></i> Đăng nhập để mua hàng
+                            </a>
+                            <div style="width:100%;margin-top:6px;">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Bạn cần <a href="/webbanhang/account/login" class="text-danger font-weight-bold">đăng nhập</a>
+                                    hoặc <a href="/webbanhang/account/register" class="text-danger font-weight-bold">đăng ký</a>
+                                    để thêm sản phẩm vào giỏ hàng.
+                                </small>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Thông tin thêm -->

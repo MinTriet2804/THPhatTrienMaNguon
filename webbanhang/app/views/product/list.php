@@ -1,6 +1,9 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 include 'app/views/shares/header.php';
+
+// Kiểm tra xem trạng thái người dùng hiện tại đã đăng nhập chưa
+$isUserLoggedIn = isset($_SESSION['user_id']) || isset($_SESSION['username']) || isset($_SESSION['user']);
 ?>
 
 <style>
@@ -21,7 +24,7 @@ include 'app/views/shares/header.php';
     .cps-title {
         font-weight: 700;
         font-size: 1.6rem;
-        color: #d70018; /* Màu đỏ CellphoneS */
+        color: #d70018; 
         text-transform: uppercase;
         margin: 0;
     }
@@ -40,14 +43,12 @@ include 'app/views/shares/header.php';
         background-color: #b50013;
         transform: translateY(-2px);
     }
-    /* Khung lưới sản phẩm */
     .cps-product-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 20px;
         margin-bottom: 50px;
     }
-    /* Thẻ bọc sản phẩm */
     .cps-product-card {
         background: #ffffff;
         border-radius: 12px;
@@ -64,7 +65,6 @@ include 'app/views/shares/header.php';
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
         border-color: #d70018;
     }
-    
     .cps-product-img-wrapper {
         height: 200px;
         display: flex;
@@ -93,8 +93,6 @@ include 'app/views/shares/header.php';
         margin-bottom: 5px;
         color: #ddd;
     }
-
-    /* Phần nội dung chữ */
     .cps-product-info {
         padding: 20px;
         display: flex;
@@ -106,7 +104,7 @@ include 'app/views/shares/header.php';
         font-weight: 700;
         margin-bottom: 8px;
         line-height: 1.4;
-        height: 48px; /* Giới hạn độ cao 2 dòng chữ */
+        height: 48px; 
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -135,7 +133,7 @@ include 'app/views/shares/header.php';
         font-size: 0.85rem;
         color: #777;
         margin-bottom: 15px;
-        height: 57px; /* Giới hạn độ cao 3 dòng mô tả */
+        height: 57px; 
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
@@ -143,7 +141,7 @@ include 'app/views/shares/header.php';
         line-height: 1.5;
     }
     .cps-price-box {
-        margin-top: auto; /* Đẩy giá xuống sát đáy */
+        margin-top: auto; 
         padding-top: 10px;
         border-top: 1px dashed #f1f3f5;
     }
@@ -157,7 +155,6 @@ include 'app/views/shares/header.php';
         font-weight: 700;
         margin-bottom: 15px;
     }
-    /* Hệ thống nút hành động */
     .cps-action-box {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -196,7 +193,6 @@ include 'app/views/shares/header.php';
         color: #fff !important;
         border-color: #d70018;
     }
-    /* Nút thêm vào giỏ hàng */
     .btn-cps-cart {
         display: block;
         background-color: #d70018;
@@ -222,9 +218,12 @@ include 'app/views/shares/header.php';
 <div class="container">
     <div class="cps-title-section">
         <h1 class="cps-title"><i class="fas fa-stream"></i> Danh sách sản phẩm</h1>
-        <a href="/webbanhang/Product/add" class="btn-cps-add">
-            <i class="fas fa-plus"></i> Thêm sản phẩm mới
-        </a>
+        
+        <?php if ($isUserLoggedIn): ?>
+            <a href="/webbanhang/Product/add" class="btn-cps-add">
+                <i class="fas fa-plus"></i> Thêm sản phẩm mới
+            </a>
+        <?php endif; ?>
     </div>
 
     <div class="cps-product-grid">
@@ -232,21 +231,20 @@ include 'app/views/shares/header.php';
             <?php foreach ($products as $product): ?>
                 <div class="cps-product-card">
                     
-                    <div class="cps-product-img-wrapper">
-                        <?php if (!empty($product->image)): ?>
-                            <img src="<?php echo imageUrl($product->image); ?>"
-                                 alt="<?php echo htmlspecialchars($product->name, ENT_QUOTES, 'UTF-8'); ?>"
-                                 onerror="handleImgError(this);">
-                        <?php else: ?>
-                            <div class="cps-no-image">
-                                <i class="fas fa-image fa-2x"></i>
-                                Chưa có hình ảnh
-                            </div>
-                        <?php endif; ?>
-                    </div>
+                <div class="cps-product-img-wrapper">
+                    <?php if (!empty($product->image)): ?>
+                        <img src="<?php echo imageUrl($product->image); ?>"
+                             alt="<?php echo htmlspecialchars($product->name, ENT_QUOTES, 'UTF-8'); ?>"
+                             onerror="this.parentElement.innerHTML='<div class=\'cps-no-image\'><i class=\'fas fa-image fa-2x\'></i>Không tìm thấy ảnh</div>'">
+                    <?php else: ?>
+                        <div class="cps-no-image">
+                            <i class="fas fa-image fa-2x"></i>
+                            Chưa có hình ảnh
+                        </div>
+                    <?php endif; ?>
+                </div>
 
                     <div class="cps-product-info">
-                        
                         <span class="cps-category-badge">
                             <i class="fas fa-tags"></i> <?php echo htmlspecialchars($product->category_name ?? 'Chưa phân loại', ENT_QUOTES, 'UTF-8'); ?>
                         </span>
@@ -270,21 +268,30 @@ include 'app/views/shares/header.php';
                                 ?>
                             </div>
                             
-                            <!-- Nút thêm vào giỏ hàng -->
-                            <a href="/webbanhang/Cart/add/<?php echo $product->id; ?>" class="btn-cps-cart">
-                                <i class="fas fa-cart-plus"></i> Thêm vào giỏ
-                            </a>
+                            <?php if ($isUserLoggedIn): ?>
+                                <a href="/webbanhang/Cart/add/<?php echo $product->id; ?>" class="btn-cps-cart">
+                                    <i class="fas fa-cart-plus"></i> Thêm vào giỏ
+                                </a>
+                            <?php else: ?>
+                                <a href="/webbanhang/account/login" class="btn-cps-cart"
+                                   style="background:#555;"
+                                   title="Đăng nhập để mua hàng">
+                                    <i class="fas fa-sign-in-alt"></i> Đăng nhập để mua
+                                </a>
+                            <?php endif; ?>
 
-                            <div class="cps-action-box" style="margin-top:8px;">
-                                <a href="/webbanhang/Product/edit/<?php echo $product->id; ?>" class="btn-cps-edit">
-                                    <i class="fas fa-pen"></i> Sửa
-                                </a>
-                                <a href="/webbanhang/Product/delete/<?php echo $product->id; ?>" 
-                                   class="btn-cps-delete" 
-                                   onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này?');">
-                                    <i class="fas fa-trash-alt"></i> Xóa
-                                </a>
-                            </div>
+                            <?php if ($isUserLoggedIn && $_SESSION['role'] === 'admin'): ?>
+                                <div class="cps-action-box" style="margin-top:8px;">
+                                    <a href="/webbanhang/Product/edit/<?php echo $product->id; ?>" class="btn-cps-edit">
+                                        <i class="fas fa-pen"></i> Sửa
+                                    </a>
+                                    <a href="/webbanhang/Product/delete/<?php echo $product->id; ?>" 
+                                       class="btn-cps-delete" 
+                                       onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này?');">
+                                        <i class="fas fa-trash-alt"></i> Xóa
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                     </div>
@@ -298,12 +305,5 @@ include 'app/views/shares/header.php';
         <?php endif; ?>
     </div>
 </div>
-
-<script>
-function handleImgError(image) {
-    image.onerror = null; // Ngăn lặp vô hạn nếu ảnh thay thế cũng lỗi
-    image.parentElement.innerHTML = '<div class="cps-no-image"><i class="fas fa-image fa-2x"></i>Không tìm thấy file ảnh</div>';
-}
-</script>
 
 <?php include 'app/views/shares/footer.php'; ?>

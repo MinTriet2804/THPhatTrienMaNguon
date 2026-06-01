@@ -14,6 +14,18 @@ class ProductController
         $this->productModel = new ProductModel($this->db);
     }
 
+    // Kiểm tra nhanh quyền đăng nhập bảo vệ các action nội bộ
+    private function checkAuth()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (!isset($_SESSION['username']) && !isset($_SESSION['user'])) {
+            header('Location: /webbanhang/account/login');
+            exit();
+        }
+    }
+
     // Action hiển thị tất cả sản phẩm
     public function index()
     {
@@ -21,7 +33,7 @@ class ProductController
         include 'app/views/product/list.php';
     }
 
-    // Action lọc sản phẩm theo danh mục (Dành cho thanh điều hướng)
+    // Action lọc sản phẩm theo danh mục
     public function category($id)
     {
         $products = $this->productModel->getProductsByCategory($id);
@@ -39,55 +51,50 @@ class ProductController
         }
     }
 
-    // Action hiển thị form thêm mới
+    // Action hiển thị form thêm mới (Yêu cầu đăng nhập Bài 4)
     public function add()
     {
+        $this->checkAuth();
         $categories = (new CategoryModel($this->db))->getCategories();
         include_once 'app/views/product/add.php';
     }
 
-    // Hàm xử lý upload file ảnh dùng chung
+    // Hàm xử lý upload file ảnh dùng chung (Đã tối ưu hóa lưu trữ đường dẫn)
     private function uploadImage()
     {
         if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-            // Dùng đường dẫn tuyệt đối từ vị trí file controller này
-            // __DIR__ = .../webbanhang/app/controllers
-            $base_dir = dirname(dirname(__DIR__)); // = .../webbanhang
+            $base_dir = dirname(dirname(__DIR__)); 
+            // Thống nhất lưu vào thư mục public/images ngang hàng app
             $target_dir = $base_dir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR;
 
-            // Tự động tạo thư mục nếu chưa có
             if (!file_exists($target_dir)) {
                 mkdir($target_dir, 0777, true);
             }
 
-            // Đổi tên file bằng time() để tránh trùng
             $file_name = time() . '_' . basename($_FILES["image"]["name"]);
-            // Thay khoảng trắng trong tên file bằng dấu gạch dưới
             $file_name = str_replace(' ', '_', $file_name);
             $target_file = $target_dir . $file_name;
             $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
 
-            // Kiểm tra định dạng đuôi file
             $valid_extensions = array("jpg", "jpeg", "png", "gif", "webp");
             if (!in_array($imageFileType, $valid_extensions)) {
                 return '';
             }
 
-            // Kiểm tra nội dung file có phải ảnh thật không
             $check = getimagesize($_FILES["image"]["tmp_name"]);
             if ($check === false) {
                 return '';
             }
 
-            // Di chuyển file từ thư mục tạm lên server
             if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-                return $file_name;
+                // Trả về chuỗi public/images/tên_file để view load dễ dàng hơn
+                return 'public/images/' . $file_name;
             }
         }
         return '';
     }
 
-    // Action xử lý lưu sản phẩm mới thêm
+    // Action xử lý lưu sản phẩm mới thêm (Yêu cầu đăng nhập)
     public function save()
     {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -99,6 +106,14 @@ class ProductController
             // Tiến hành upload file ảnh
             $image = $this->uploadImage();
 
+            // NẾU KHÔNG UP ĐƯỢC ẢNH HOẶC ẢNH LỖI -> THÔNG BÁO LỖI LUÔN
+            if (empty($image)) {
+                $errors = ['image' => 'Không thể upload hình ảnh. Vui lòng kiểm tra lại định dạng hoặc dung lượng file!'];
+                $categories = (new CategoryModel($this->db))->getCategories();
+                include 'app/views/product/add.php';
+                return; // Dừng lại không lưu vào DB nữa
+            }
+
             $result = $this->productModel->addProduct($name, $description, $price, $category_id, $image);
 
             if (is_array($result)) {
@@ -107,13 +122,15 @@ class ProductController
                 include 'app/views/product/add.php';
             } else {
                 header('Location: /webbanhang/Product');
+                exit();
             }
         }
     }
 
-    // Action hiển thị form chỉnh sửa
+    // Action hiển thị form chỉnh sửa (Yêu cầu đăng nhập)
     public function edit($id)
     {
+        $this->checkAuth();
         $product = $this->productModel->getProductById($id);
         $categories = (new CategoryModel($this->db))->getCategories();
         if ($product) {
@@ -123,9 +140,10 @@ class ProductController
         }
     }
 
-    // Action xử lý cập nhật sản phẩm
+    // Action xử lý cập nhật sản phẩm (Yêu cầu đăng nhập)
     public function update()
     {
+        $this->checkAuth();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'];
             $name = $_POST['name'];
@@ -142,39 +160,42 @@ class ProductController
             $edit = $this->productModel->updateProduct($id, $name, $description, $price, $category_id, $image_to_save);
             
             if ($edit) {
-                // Xóa ảnh cũ nếu có ảnh mới
+                // Xóa ảnh cũ trên bộ nhớ vật lý server nếu có ảnh mới thay thế
                 if (!empty($new_image) && !empty($old_image)) {
                     $base_dir = dirname(dirname(__DIR__));
-                    $old_path = $base_dir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $old_image;
+                    // Tìm đúng file dựa vào chuỗi lưu trong DB
+                    $old_path = $base_dir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $old_image);
                     if (file_exists($old_path)) {
                         unlink($old_path);
                     }
                 }
                 header('Location: /webbanhang/Product');
+                exit();
             } else {
                 echo "Đã xảy ra lỗi khi lưu sản phẩm.";
             }
         }
     }
 
-    // Action xóa sản phẩm
+    // Action xóa sản phẩm (Yêu cầu đăng nhập)
     public function delete($id)
     {
+        $this->checkAuth();
         $product = $this->productModel->getProductById($id);
         
         if ($product) {
             $image_name = $product->image;
             
             if ($this->productModel->deleteProduct($id)) {
-                // Xóa file ảnh vật lý nếu tồn tại
                 if (!empty($image_name)) {
                     $base_dir = dirname(dirname(__DIR__));
-                    $img_path = $base_dir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $image_name;
+                    $img_path = $base_dir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $image_name);
                     if (file_exists($img_path)) {
                         unlink($img_path);
                     }
                 }
                 header('Location: /webbanhang/Product');
+                exit();
             } else {
                 echo "Đã xảy ra lỗi khi xóa sản phẩm.";
             }

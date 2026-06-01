@@ -20,7 +20,54 @@ DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS product;
 DROP TABLE IF EXISTS category;
+DROP TABLE IF EXISTS password_resets;
+DROP TABLE IF EXISTS account;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ============================================================
+--  BẢNG 0: account
+--  Dùng bởi: AccountModel, AccountController
+-- ============================================================
+CREATE TABLE account (
+    id               INT            AUTO_INCREMENT PRIMARY KEY,
+    username         VARCHAR(100)   NOT NULL UNIQUE,
+    fullname         VARCHAR(150)   NOT NULL,
+    email            VARCHAR(150)   DEFAULT NULL UNIQUE,
+    password         VARCHAR(255)   NOT NULL,
+    role             ENUM('admin','user') NOT NULL DEFAULT 'user',
+    avatar           VARCHAR(255)   DEFAULT NULL,
+    phone            VARCHAR(20)    DEFAULT NULL,
+    address          TEXT           DEFAULT NULL,
+    is_active        TINYINT(1)     NOT NULL DEFAULT 1,
+    is_verified      TINYINT(1)     NOT NULL DEFAULT 0,
+    verify_token     VARCHAR(100)   DEFAULT NULL,
+    remember_token   VARCHAR(100)   DEFAULT NULL,
+    created_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  BẢNG 0b: password_resets
+--  Dùng bởi: AccountController (quên mật khẩu)
+-- ============================================================
+CREATE TABLE password_resets (
+    id         INT          AUTO_INCREMENT PRIMARY KEY,
+    email      VARCHAR(150) NOT NULL,
+    token      VARCHAR(100) NOT NULL,
+    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_token (token),
+    INDEX idx_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TÀI KHOẢN MẪU
+--  Admin : username = admin   | password = 12345678@Admin
+--  User  : username = user1   | password = 12345678@Admin
+-- ============================================================
+INSERT INTO account (username, fullname, email, password, role, is_active, is_verified) VALUES
+('admin', 'Quản trị viên',  'admin@techstore.vn',
+ '$2y$10$OmzWkLGi51RlBK7hDtbrGultUPZ7xtmMddyG/lpSwtj2MCKinT2Iu', 'admin', 1, 1),
+('user1', 'Người dùng mẫu', 'user1@techstore.vn',
+ '$2y$10$OmzWkLGi51RlBK7hDtbrGultUPZ7xtmMddyG/lpSwtj2MCKinT2Iu', 'user',  1, 1);
 
 -- ============================================================
 --  BẢNG 1: category

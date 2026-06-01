@@ -33,6 +33,14 @@ class CartController
     // Thêm sản phẩm vào giỏ
     public function add($id)
     {
+        // Bắt buộc đăng nhập
+        if (!isset($_SESSION['user_id']) && !isset($_SESSION['username'])) {
+            $_SESSION['flash_error']   = 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!';
+            $_SESSION['redirect_after_login'] = $_SERVER['HTTP_REFERER'] ?? '/webbanhang/Product';
+            header('Location: /webbanhang/account/login');
+            exit;
+        }
+
         $product = $this->productModel->getProductById($id);
         if ($product) {
             $this->cartModel->addToCart($product);
@@ -76,6 +84,14 @@ class CartController
     // Hiển thị trang thanh toán
     public function checkout()
     {
+        // Bắt buộc đăng nhập
+        if (!isset($_SESSION['user_id']) && !isset($_SESSION['username'])) {
+            $_SESSION['flash_error']   = 'Vui lòng đăng nhập để tiến hành thanh toán!';
+            $_SESSION['redirect_after_login'] = '/webbanhang/Cart/checkout';
+            header('Location: /webbanhang/account/login');
+            exit;
+        }
+
         $cart  = $this->cartModel->getCart();
         $total = $this->cartModel->getTotal();
         if (empty($cart)) {
@@ -88,6 +104,14 @@ class CartController
     // Xử lý đặt hàng — lưu vào DB
     public function placeOrder()
     {
+        // Bắt buộc đăng nhập
+        if (!isset($_SESSION['user_id']) && !isset($_SESSION['username'])) {
+            $_SESSION['flash_error']   = 'Vui lòng đăng nhập để đặt hàng!';
+            $_SESSION['redirect_after_login'] = '/webbanhang/Cart/checkout';
+            header('Location: /webbanhang/account/login');
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fullname = htmlspecialchars(strip_tags($_POST['fullname'] ?? ''));
             $phone    = htmlspecialchars(strip_tags($_POST['phone']    ?? ''));
