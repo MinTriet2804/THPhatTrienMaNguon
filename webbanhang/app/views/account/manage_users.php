@@ -93,7 +93,7 @@
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <?php if (!empty($acc->avatar)): ?>
-                                    <img src="/webbanhang/img.php?f=<?= urlencode($acc->avatar) ?>"
+                                    <img src="/public/images/<?= urlencode(basename($acc->avatar)) ?>"
                                          alt="" class="avatar-sm mr-2">
                                 <?php else: ?>
                                     <span class="avatar-sm-placeholder mr-2">

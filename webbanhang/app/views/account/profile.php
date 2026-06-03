@@ -112,7 +112,7 @@
         <div class="profile-header">
             <div class="avatar-wrapper">
                 <?php if (!empty($account->avatar)): ?>
-                    <img src="/webbanhang/img.php?f=<?= urlencode($account->avatar) ?>"
+                    <img src="/public/images/<?= urlencode(basename($account->avatar)) ?>"
                          alt="Avatar" class="avatar-img" id="avatarPreview">
                 <?php else: ?>
                     <div class="avatar-placeholder" id="avatarPreview">

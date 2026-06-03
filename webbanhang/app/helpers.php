@@ -1,7 +1,7 @@
 <?php
 /**
  * Sinh URL hiển thị ảnh sản phẩm
- * Dùng img.php để serve ảnh — không phụ thuộc Apache config
+ * Serve ảnh trực tiếp từ public/images/ — không cần img.php
  *
  * @param  string $filename  Tên file ảnh lưu trong DB (vd: 1234_iphone.webp)
  * @return string            URL đầy đủ để dùng trong src=""
@@ -11,7 +11,7 @@ function imageUrl(string $filename): string
     if (empty(trim($filename))) {
         return '';
     }
-    return '/webbanhang/img.php?f=' . urlencode(basename($filename));
+    return '/public/images/' . basename($filename);
 }
 
 /**

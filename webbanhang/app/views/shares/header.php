@@ -268,7 +268,7 @@ $currentFullname = $_SESSION['fullname'] ?? $currentUser;
                                         id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
                                         style="background:rgba(255,255,255,0.15);border-radius:8px;border:1px solid rgba(255,255,255,0.3);">
                                     <?php if (!empty($currentAvatar)): ?>
-                                        <img src="/webbanhang/img.php?f=<?= urlencode($currentAvatar) ?>"
+                                        <img src="/public/images/<?= urlencode(basename($currentAvatar)) ?>"
                                              alt="avatar"
                                              style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-right:6px;border:2px solid rgba(255,255,255,0.5);">
                                     <?php else: ?>
