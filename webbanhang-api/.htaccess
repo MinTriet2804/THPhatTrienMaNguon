@@ -1,0 +1,17 @@
+RewriteEngine On
+Options -Indexes
+
+# ============================================================
+#  API Routes: /api/* → api/index.php
+#  Ưu tiên xử lý trước MVC routes
+# ============================================================
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+# ============================================================
+#  MVC Routes: tất cả request còn lại → index.php
+# ============================================================
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

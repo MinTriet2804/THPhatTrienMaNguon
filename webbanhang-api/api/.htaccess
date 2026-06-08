@@ -1,0 +1,9 @@
+Options -Indexes
+RewriteEngine On
+
+# Cho phép truy cập trực tiếp file và thư mục tồn tại
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Tất cả request tới /api/* sẽ được xử lý bởi api/index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
