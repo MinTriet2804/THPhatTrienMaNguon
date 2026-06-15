@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý sản phẩm — TechStore Admin</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<div class="container-fluid px-md-5 main-content">
+    <div class="d-flex align-items-center justify-content-between mt-3 mb-4">
+        <h1 class="cps-title mb-0"><i class="fas fa-box"></i> Quản lý sản phẩm</h1>
+        <button id="btn-add-product" class="btn btn-danger">
+            <i class="fas fa-plus mr-1"></i>Thêm sản phẩm
+        </button>
+    </div>
+
+    <div id="products-loading" class="text-center py-5">
+        <div class="spinner-border text-danger"></div>
+    </div>
+
+    <div class="page-card" id="products-table-card" style="display:none;">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>ID</th><th>Ảnh</th><th>Tên sản phẩm</th><th>Danh mục</th>
+                        <th class="text-right">Giá</th><th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="products-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal thêm/sửa sản phẩm -->
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;">
+            <div class="modal-header">
+                <h5 class="modal-title font-weight-700" id="product-modal-title">Thêm sản phẩm</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-alert" style="display:none;" class="alert alert-danger"></div>
+                <form id="product-form">
+                    <input type="hidden" id="product-id">
+                    <div class="form-group">
+                        <label class="font-weight-bold">Tên sản phẩm <span class="text-danger">*</span></label>
+                        <input type="text" id="product-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Danh mục <span class="text-danger">*</span></label>
+                        <select id="product-category" class="form-control" required>
+                            <option value="">-- Chọn danh mục --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Giá (₫) <span class="text-danger">*</span></label>
+                        <input type="number" id="product-price" class="form-control" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Mô tả</label>
+                        <textarea id="product-desc" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" id="btn-save-product" class="btn btn-danger">
+                    <i class="fas fa-save mr-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/components.js"></script>
+<script>
+$(document).ready(function () {
+    if (!Auth.requireAdmin()) return;
+    Components.loadHeader();
+    Components.loadFooter();
+
+    // Load danh mục vào select
+    API.get('/api/categories').done(function (res) {
+        if (res.success) {
+            $.each(res.data, function (i, c) {
+                $('#product-category').append('<option value="' + c.id + '">' + escHtml(c.name) + '</option>');
+            });
+        }
+    });
+
+    loadProducts();
+
+    // Thêm sản phẩm mới
+    $('#btn-add-product').on('click', function () {
+        resetForm();
+        $('#product-modal-title').text('Thêm sản phẩm mới');
+        $('#productModal').modal('show');
+    });
+
+    // Lưu sản phẩm (thêm hoặc sửa)
+    $('#btn-save-product').on('click', function () {
+        var id   = $('#product-id').val();
+        var data = {
+            name:        $.trim($('#product-name').val()),
+            category_id: $('#product-category').val(),
+            price:       $('#product-price').val(),
+            description: $.trim($('#product-desc').val()),
+        };
+
+        if (!data.name || !data.category_id || !data.price) {
+            $('#modal-alert').html('<i class="fas fa-exclamation-circle mr-2"></i>Vui lòng điền đầy đủ các trường bắt buộc.').show();
+            return;
+        }
+
+        var btn = $('#btn-save-product').prop('disabled', true);
+
+        var req = id
+            ? API.authPut('/api/products/' + id, data)
+            : API.authPost('/api/products', data);
+
+        req.done(function (res) {
+            if (res.success) {
+                $('#productModal').modal('hide');
+                Toast.success(id ? 'Cập nhật sản phẩm thành công!' : 'Thêm sản phẩm thành công!');
+                loadProducts();
+            } else {
+                var errs = res.errors ? Object.values(res.errors).join('<br>') : res.message;
+                $('#modal-alert').html('<i class="fas fa-exclamation-circle mr-2"></i>' + errs).show();
+            }
+        }).fail(function (xhr) {
+            var r = xhr.responseJSON;
+            var errs = (r && r.errors) ? Object.values(r.errors).join('<br>') : (r ? r.message : 'Lỗi.');
+            $('#modal-alert').html(errs).show();
+        }).always(function () { btn.prop('disabled', false); });
+    });
+});
+
+function loadProducts() {
+    $('#products-loading').show();
+    $('#products-table-card').hide();
+
+    API.authGet('/api/products').done(function (res) {
+        $('#products-loading').hide();
+        if (!res.success) return;
+        var tbody = $('#products-tbody').empty();
+        $('#products-table-card').show();
+
+        $.each(res.data, function (i, p) {
+            var imgHtml = p.image
+                ? '<img src="' + API.imgUrl(p.image) + '" style="width:50px;height:50px;object-fit:contain;border-radius:6px;">'
+                : '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:6px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-image text-muted"></i></div>';
+
+            tbody.append(
+                '<tr>'
+                + '<td class="align-middle">' + p.id + '</td>'
+                + '<td class="align-middle">' + imgHtml + '</td>'
+                + '<td class="align-middle font-weight-600">' + escHtml(p.name) + '</td>'
+                + '<td class="align-middle"><span class="badge badge-secondary">' + escHtml(p.category_name || '') + '</span></td>'
+                + '<td class="align-middle text-right" style="color:#d70018;font-weight:700;">' + numberFormat(p.price) + ' ₫</td>'
+                + '<td class="align-middle text-center">'
+                + '<button class="btn btn-sm btn-outline-secondary mr-1 btn-edit-product" data-id="' + p.id + '"><i class="fas fa-pen"></i></button>'
+                + '<button class="btn btn-sm btn-outline-danger btn-delete-product" data-id="' + p.id + '" data-name="' + escHtml(p.name) + '"><i class="fas fa-trash"></i></button>'
+                + '</td></tr>'
+            );
+        });
+
+        // Nút sửa
+        tbody.find('.btn-edit-product').on('click', function () {
+            var id = $(this).data('id');
+            API.authGet('/api/products/' + id).done(function (res) {
+                if (!res.success) return;
+                var p = res.data;
+                resetForm();
+                $('#product-id').val(p.id);
+                $('#product-name').val(p.name);
+                $('#product-category').val(p.category_id);
+                $('#product-price').val(p.price);
+                $('#product-desc').val(p.description);
+                $('#product-modal-title').text('Cập nhật sản phẩm');
+                $('#productModal').modal('show');
+            });
+        });
+
+        // Nút xóa
+        tbody.find('.btn-delete-product').on('click', function () {
+            var id   = $(this).data('id');
+            var name = $(this).data('name');
+            if (!confirm('Xóa sản phẩm "' + name + '"?')) return;
+            API.authDelete('/api/products/' + id).done(function (res) {
+                if (res.success) { Toast.success('Đã xóa sản phẩm.'); loadProducts(); }
+                else Toast.error(res.message);
+            });
+        });
+    });
+}
+
+function resetForm() {
+    $('#product-id').val('');
+    $('#product-form')[0].reset();
+    $('#modal-alert').hide();
+}
+</script>
+</body>
+</html>

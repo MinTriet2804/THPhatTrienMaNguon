@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechStore — Trang chủ</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div id="header-placeholder"></div>
+
+<!-- ===== BANNER ===== -->
+<div class="container-fluid px-md-5 cps-banner-container" id="banner-section">
+    <div class="cps-banner-wrapper">
+        <div class="cps-banner-circle cps-banner-circle-1"></div>
+        <div class="cps-banner-circle cps-banner-circle-2"></div>
+        <div class="cps-banner-circle cps-banner-circle-3"></div>
+        <div class="cps-banner-content">
+            <h2><i class="fas fa-bolt"></i> TechStore — Công nghệ đỉnh cao</h2>
+            <p>Hàng chính hãng · Giá tốt nhất · Giao hàng nhanh toàn quốc · Bảo hành 12 tháng</p>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div class="container-fluid px-md-5 main-content">
+
+    <!-- Toolbar lọc & tìm kiếm -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <h1 class="cps-title mb-0"><i class="fas fa-stream"></i> Danh sách sản phẩm</h1>
+            <span id="product-count-badge" class="badge badge-danger ml-2" style="font-size:0.85rem;display:none;"></span>
+        </div>
+        <div class="d-flex flex-wrap gap-2" style="gap:8px;">
+            <!-- Filter danh mục -->
+            <select id="filter-category" class="form-control form-control-sm" style="min-width:160px;">
+                <option value="">Tất cả danh mục</option>
+            </select>
+            <!-- Sắp xếp giá -->
+            <select id="sort-price" class="form-control form-control-sm" style="min-width:160px;">
+                <option value="">Sắp xếp theo giá</option>
+                <option value="asc">Giá tăng dần</option>
+                <option value="desc">Giá giảm dần</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="products-loading" class="text-center py-5">
+        <div class="spinner-border text-danger" role="status"></div>
+        <p class="mt-2 text-muted">Đang tải sản phẩm...</p>
+    </div>
+
+    <!-- Grid sản phẩm -->
+    <div id="products-grid" class="cps-product-grid" style="display:none;"></div>
+
+    <!-- Empty state -->
+    <div id="products-empty" style="display:none;" class="text-center p-5 bg-white rounded">
+        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+        <p class="text-muted">Không tìm thấy sản phẩm nào.</p>
+    </div>
+
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div id="footer-placeholder"></div>
+
+<!-- ===== MODAL: Chi tiết sản phẩm ===== -->
+<div class="modal fade" id="productDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+            <div class="modal-header" style="border-bottom:1px solid #f0f0f0;">
+                <h5 class="modal-title font-weight-700" id="modal-product-name">Chi tiết sản phẩm</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" id="modal-product-body">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-danger"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOAST thông báo ===== -->
+<div id="toast-container" style="position:fixed;bottom:24px;right:24px;z-index:9999;"></div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/components.js"></script>
+<script>
+$(document).ready(function () {
+    Components.loadHeader();
+    Components.loadFooter();
+
+    // Load danh mục vào dropdown
+    API.get('/api/categories').done(function (res) {
+        if (res.success) {
+            $.each(res.data, function (i, cat) {
+                $('#filter-category').append(
+                    $('<option>').val(cat.id).text(cat.name)
+                );
+            });
+        }
+    });
+
+    // Load sản phẩm ban đầu
+    loadProducts();
+
+    // Đổi filter danh mục
+    $('#filter-category').on('change', function () {
+        loadProducts();
+    });
+
+    // Đổi sắp xếp
+    $('#sort-price').on('change', function () {
+        loadProducts();
+    });
+});
+
+function loadProducts() {
+    var categoryId = $('#filter-category').val();
+    var sort = $('#sort-price').val();
+
+    $('#products-loading').show();
+    $('#products-grid').hide();
+    $('#products-empty').hide();
+
+    var endpoint;
+    if (categoryId) {
+        endpoint = '/api/products/filter?category_id=' + categoryId;
+    } else if (sort) {
+        endpoint = '/api/products/sort?order=' + sort;
+    } else {
+        endpoint = '/api/products';
+    }
+
+    API.get(endpoint).done(function (res) {
+        $('#products-loading').hide();
+
+        var products = [];
+        if (res.success) {
+            // filter trả về { category, products, count }
+            if (Array.isArray(res.data)) {
+                products = res.data;
+            } else if (res.data && Array.isArray(res.data.products)) {
+                products = res.data.products;
+            }
+        }
+
+        if (products.length === 0) {
+            $('#products-empty').show();
+            $('#product-count-badge').hide();
+            return;
+        }
+
+        $('#product-count-badge').text(products.length + ' sản phẩm').show();
+        var grid = $('#products-grid').empty().show();
+        $.each(products, function (i, p) {
+            grid.append(renderProductCard(p));
+        });
+
+        // Xử lý thêm giỏ hàng
+        grid.find('.btn-add-cart').off('click').on('click', function (e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var name = $(this).data('name');
+            addToCart(id, name, $(this));
+        });
+
+        // Xem chi tiết
+        grid.find('.btn-detail').off('click').on('click', function (e) {
+            e.preventDefault();
+            showProductDetail($(this).data('id'));
+        });
+
+    }).fail(function () {
+        $('#products-loading').hide();
+        Toast.error('Không thể tải danh sách sản phẩm.');
+    });
+}
+
+function renderProductCard(p) {
+    var imgHtml = p.image
+        ? '<img src="' + API.imgUrl(p.image) + '" alt="' + escHtml(p.name) + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'cps-no-image\\\'><i class=\\\'fas fa-image fa-2x\\\'></i>Không có ảnh</div>\'">'
+        : '<div class="cps-no-image"><i class="fas fa-image fa-2x"></i>Chưa có ảnh</div>';
+
+    var priceFormatted = numberFormat(p.price) + ' ₫';
+    var isAdmin = Auth.isAdmin();
+    var isLoggedIn = Auth.isLoggedIn();
+
+    var actionBtns = '';
+    if (isAdmin) {
+        actionBtns = '<div class="cps-action-box mt-2">'
+            + '<a href="product-edit.html?id=' + p.id + '" class="btn-cps-edit"><i class="fas fa-pen"></i> Sửa</a>'
+            + '<button class="btn-cps-delete btn-delete-product" data-id="' + p.id + '" data-name="' + escHtml(p.name) + '"><i class="fas fa-trash-alt"></i> Xóa</button>'
+            + '</div>';
+    }
+
+    var cartBtn = isLoggedIn
+        ? '<button class="btn-cps-cart btn-add-cart" data-id="' + p.id + '" data-name="' + escHtml(p.name) + '"><i class="fas fa-cart-plus"></i> Thêm vào giỏ</button>'
+        : '<a href="login.html" class="btn-cps-cart" style="background:#555;"><i class="fas fa-sign-in-alt"></i> Đăng nhập để mua</a>';
+
+    return $('<div class="cps-product-card">'
+        + '<div class="cps-product-img-wrapper">' + imgHtml + '</div>'
+        + '<div class="cps-product-info">'
+        + '<span class="cps-category-badge"><i class="fas fa-tags"></i> ' + escHtml(p.category_name || 'Chưa phân loại') + '</span>'
+        + '<h2 class="cps-product-name"><a href="#" class="btn-detail" data-id="' + p.id + '">' + escHtml(p.name) + '</a></h2>'
+        + '<p class="cps-product-desc">' + escHtml(p.description || '') + '</p>'
+        + '<div class="cps-price-box">'
+        + '<div class="cps-price-label">Giá bán:</div>'
+        + '<div class="cps-product-price">' + priceFormatted + '</div>'
+        + cartBtn
+        + actionBtns
+        + '</div></div></div>');
+}
+
+function addToCart(productId, productName, btn) {
+    if (!Auth.isLoggedIn()) {
+        window.location.href = 'login.html';
+        return;
+    }
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+    API.authPost('/api/cart', { product_id: productId, quantity: 1 })
+        .done(function (res) {
+            if (res.success) {
+                Toast.success('Đã thêm "' + productName + '" vào giỏ hàng!');
+                Components.updateCartBadge(res.data.item_count);
+            } else {
+                Toast.error(res.message || 'Không thể thêm vào giỏ.');
+            }
+        })
+        .fail(function (xhr) {
+            var msg = xhr.responseJSON ? xhr.responseJSON.message : 'Lỗi kết nối.';
+            Toast.error(msg);
+        })
+        .always(function () {
+            btn.prop('disabled', false).html('<i class="fas fa-cart-plus"></i> Thêm vào giỏ');
+        });
+}
+
+function showProductDetail(id) {
+    $('#modal-product-body').html('<div class="text-center py-4"><div class="spinner-border text-danger"></div></div>');
+    $('#productDetailModal').modal('show');
+
+    API.get('/api/products/' + id).done(function (res) {
+        if (!res.success) { $('#modal-product-body').html('<p class="text-danger">Không tải được sản phẩm.</p>'); return; }
+        var p = res.data;
+        $('#modal-product-name').text(p.name);
+        var imgHtml = p.image
+            ? '<img src="' + API.imgUrl(p.image) + '" class="img-fluid rounded" style="max-height:260px;object-fit:contain;">'
+            : '<div class="cps-no-image p-5"><i class="fas fa-image fa-4x"></i><br>Chưa có ảnh</div>';
+
+        $('#modal-product-body').html(
+            '<div class="row">'
+            + '<div class="col-md-5 text-center mb-3 mb-md-0">' + imgHtml + '</div>'
+            + '<div class="col-md-7">'
+            + '<span class="cps-category-badge mb-2"><i class="fas fa-tags"></i> ' + escHtml(p.category_name || '') + '</span>'
+            + '<p class="text-muted" style="font-size:0.9rem;">' + escHtml(p.description || 'Chưa có mô tả.') + '</p>'
+            + '<div class="cps-product-price" style="font-size:1.5rem;">' + numberFormat(p.price) + ' ₫</div>'
+            + (Auth.isLoggedIn()
+                ? '<button class="btn-cps-cart btn-add-cart mt-2" data-id="' + p.id + '" data-name="' + escHtml(p.name) + '"><i class="fas fa-cart-plus"></i> Thêm vào giỏ</button>'
+                : '<a href="login.html" class="btn-cps-cart mt-2" style="background:#555;display:block;"><i class="fas fa-sign-in-alt"></i> Đăng nhập để mua</a>')
+            + '</div></div>'
+        );
+        $('#modal-product-body .btn-add-cart').on('click', function () {
+            addToCart($(this).data('id'), $(this).data('name'), $(this));
+        });
+    });
+}
+
+// Xóa sản phẩm (admin)
+$(document).on('click', '.btn-delete-product', function () {
+    var id = $(this).data('id');
+    var name = $(this).data('name');
+    if (!confirm('Xóa sản phẩm "' + name + '"?')) return;
+    API.authDelete('/api/products/' + id).done(function (res) {
+        if (res.success) { Toast.success('Đã xóa sản phẩm.'); loadProducts(); }
+        else Toast.error(res.message);
+    });
+});
+</script>
+</body>
+</html>

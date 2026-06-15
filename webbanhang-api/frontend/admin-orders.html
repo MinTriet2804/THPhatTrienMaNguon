@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý đơn hàng — TechStore Admin</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<div class="container-fluid px-md-5 main-content">
+    <h1 class="cps-title mt-3 mb-4"><i class="fas fa-clipboard-list"></i> Quản lý đơn hàng</h1>
+
+    <div id="orders-loading" class="text-center py-5">
+        <div class="spinner-border text-danger"></div>
+    </div>
+
+    <!-- Thống kê nhanh -->
+    <div id="stats-row" class="row mb-4" style="display:none !important;"></div>
+
+    <div class="page-card" id="orders-table-card" style="display:none;">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>ID</th><th>Khách hàng</th><th>Địa chỉ</th>
+                        <th class="text-right">Tổng tiền</th><th>Trạng thái</th>
+                        <th>Thanh toán</th><th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal cập nhật trạng thái -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+        <div class="modal-content" style="border-radius:14px;">
+            <div class="modal-header">
+                <h5 class="modal-title font-weight-700">Cập nhật trạng thái đơn <span id="status-order-id"></span></h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="font-weight-bold">Trạng thái mới:</label>
+                <select id="new-status" class="form-control mt-1">
+                    <option value="pending">Chờ xác nhận</option>
+                    <option value="confirmed">Đã xác nhận</option>
+                    <option value="shipping">Đang giao hàng</option>
+                    <option value="delivered">Đã giao hàng</option>
+                    <option value="cancelled">Đã hủy</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button id="btn-update-status" class="btn btn-danger">Cập nhật</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/components.js"></script>
+<script>
+var STATUS_LABELS = {
+    pending:   '<span class="badge badge-pending px-2 py-1">Chờ xác nhận</span>',
+    confirmed: '<span class="badge badge-confirmed px-2 py-1">Đã xác nhận</span>',
+    shipping:  '<span class="badge badge-shipping px-2 py-1">Đang giao</span>',
+    delivered: '<span class="badge badge-delivered px-2 py-1">Đã giao</span>',
+    cancelled: '<span class="badge badge-cancelled px-2 py-1">Đã hủy</span>',
+};
+var PAYMENT_LABELS = { cod: 'COD', bank_transfer: 'Chuyển khoản', e_wallet: 'Ví điện tử' };
+var currentOrderId = null;
+
+$(document).ready(function () {
+    if (!Auth.requireAdmin()) return;
+    Components.loadHeader();
+    Components.loadFooter();
+    loadOrders();
+
+    $('#btn-update-status').on('click', function () {
+        if (!currentOrderId) return;
+        var status = $('#new-status').val();
+        var btn = $(this).prop('disabled', true);
+
+        API.authPut('/api/orders/' + currentOrderId + '/status', { status: status })
+            .done(function (res) {
+                $('#statusModal').modal('hide');
+                if (res.success) { Toast.success('Đã cập nhật trạng thái.'); loadOrders(); }
+                else Toast.error(res.message);
+            })
+            .always(function () { btn.prop('disabled', false); });
+    });
+});
+
+function loadOrders() {
+    $('#orders-loading').show();
+    $('#orders-table-card').hide();
+
+    API.authGet('/api/orders').done(function (res) {
+        $('#orders-loading').hide();
+        if (!res.success) return;
+
+        var orders = res.data.orders || res.data;
+        var stats  = res.data.stats;
+
+        // Thống kê nhanh (nếu API trả về)
+        if (stats) {
+            var statsHtml = '';
+            var statItems = [
+                { label: 'Tổng đơn', val: stats.total || 0, color: '#6c757d', icon: 'fa-list' },
+                { label: 'Chờ xử lý', val: stats.pending || 0, color: '#856404', icon: 'fa-clock' },
+                { label: 'Đang giao', val: stats.shipping || 0, color: '#0c5460', icon: 'fa-truck' },
+                { label: 'Đã giao', val: stats.delivered || 0, color: '#155724', icon: 'fa-check' },
+            ];
+            $.each(statItems, function (i, s) {
+                statsHtml += '<div class="col-6 col-md-3 mb-3"><div class="page-card text-center py-3" style="border-left:4px solid ' + s.color + ';">'
+                    + '<i class="fas ' + s.icon + ' mb-2" style="color:' + s.color + ';font-size:1.4rem;"></i>'
+                    + '<div style="font-size:1.6rem;font-weight:800;color:' + s.color + ';">' + s.val + '</div>'
+                    + '<small class="text-muted">' + s.label + '</small></div></div>';
+            });
+            $('#stats-row').html(statsHtml).css('display', 'flex');
+        }
+
+        renderTable(orders);
+    });
+}
+
+function renderTable(orders) {
+    var tbody = $('#orders-tbody').empty();
+    $('#orders-table-card').show();
+
+    $.each(orders, function (i, o) {
+        tbody.append(
+            '<tr>'
+            + '<td class="align-middle font-weight-700">#' + o.id + '</td>'
+            + '<td class="align-middle"><div class="font-weight-600">' + escHtml(o.fullname || '') + '</div><small class="text-muted">' + escHtml(o.phone || '') + '</small></td>'
+            + '<td class="align-middle" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(o.address || '') + '</td>'
+            + '<td class="align-middle text-right font-weight-700" style="color:#d70018;">' + numberFormat(o.total_amount) + ' ₫</td>'
+            + '<td class="align-middle">' + (STATUS_LABELS[o.status] || o.status) + '</td>'
+            + '<td class="align-middle"><small>' + (PAYMENT_LABELS[o.payment_method] || o.payment_method) + '</small></td>'
+            + '<td class="align-middle text-center">'
+            + '<button class="btn btn-sm btn-outline-secondary btn-change-status" data-id="' + o.id + '" data-status="' + o.status + '"><i class="fas fa-edit"></i></button>'
+            + '</td></tr>'
+        );
+    });
+
+    tbody.find('.btn-change-status').on('click', function () {
+        currentOrderId = $(this).data('id');
+        $('#status-order-id').text('#' + currentOrderId);
+        $('#new-status').val($(this).data('status'));
+        $('#statusModal').modal('show');
+    });
+}
+</script>
+</body>
+</html>

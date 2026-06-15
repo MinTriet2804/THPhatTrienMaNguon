@@ -1,23 +1,49 @@
 {
   "info": {
-    "_postman_id": "techstore-web-api-v1",
-    "name": "TechStore Web API",
-    "description": "Bộ test đầy đủ cho TechStore Web API\n\n## Hướng dẫn sử dụng\n1. Import file này vào Postman\n2. Đặt biến `base_url` = `http://localhost/webbanhang`\n3. Chạy Auth/Login trước để lấy session\n4. Kiểm tra từng endpoint theo thứ tự\n\n## Tài khoản test\n- Admin: username=`admin`, password=`12345678@Admin`\n- User: username=`user1`, password=`12345678@Admin`",
+    "_postman_id": "techstore-web-api-v2",
+    "name": "TechStore Web API v2 (JWT)",
+    "description": "Bộ test đầy đủ cho TechStore Web API — Xác thực JWT\n\n## Hướng dẫn sử dụng\n1. Import file này vào Postman\n2. Đặt biến `base_url` = `http://localhost:8080/webbanhang-api`\n3. Chạy **Auth › Login** trước — copy `token` từ response\n4. Paste token vào biến `jwt_token`\n5. Các request đã được cấu hình sẵn `Authorization: Bearer {{jwt_token}}`\n\n## Tài khoản test\n- Admin: username=`admin`, password=`12345678@Admin`\n- User:  username=`user1`, password=`12345678@Admin`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost/webbanhang",
-      "type": "string"
-    }
+    { "key": "base_url",  "value": "http://localhost:8080/webbanhang-api", "type": "string" },
+    { "key": "jwt_token", "value": "",                                     "type": "string",
+      "description": "Paste token nhận được từ Login vào đây" }
   ],
   "item": [
     {
       "name": "🔐 Auth",
       "item": [
         {
-          "name": "Login - Admin",
+          "name": "Register — Đăng ký tài khoản mới",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"fullname\": \"Người Dùng Mới\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"123456\",\n  \"confirm_password\": \"123456\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/register",
+            "description": "Đăng ký tài khoản. Mật khẩu được hash bằng password_hash."
+          }
+        },
+        {
+          "name": "Login — Admin (lấy JWT token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.success && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('jwt_token', res.data.token);",
+                  "    console.log('JWT token đã được lưu tự động.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -26,11 +52,26 @@
               "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"12345678@Admin\"\n}"
             },
             "url": "{{base_url}}/api/auth/login",
-            "description": "Đăng nhập với quyền Admin"
+            "description": "Đăng nhập Admin. Token JWT sẽ được tự động lưu vào biến `jwt_token`."
           }
         },
         {
-          "name": "Login - User",
+          "name": "Login — User thường",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.success && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('jwt_token', res.data.token);",
+                  "    console.log('JWT token đã được lưu tự động.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -38,35 +79,202 @@
               "mode": "raw",
               "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"12345678@Admin\"\n}"
             },
-            "url": "{{base_url}}/api/auth/login",
-            "description": "Đăng nhập với quyền User thường"
+            "url": "{{base_url}}/api/auth/login"
           }
         },
         {
-          "name": "Register",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"newuser\",\n  \"fullname\": \"Người Dùng Mới\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"123456\",\n  \"confirm_password\": \"123456\"\n}"
-            },
-            "url": "{{base_url}}/api/auth/register"
-          }
-        },
-        {
-          "name": "Get Me (thông tin user hiện tại)",
+          "name": "Me — Thông tin user hiện tại [JWT]",
           "request": {
             "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
             "url": "{{base_url}}/api/auth/me",
-            "description": "Cần đăng nhập trước"
+            "description": "Lấy thông tin user từ JWT token. Cần đăng nhập trước."
           }
         },
         {
           "name": "Logout",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/auth/logout"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/auth/logout",
+            "description": "JWT stateless — client tự xóa token."
+          }
+        },
+        {
+          "name": "Forgot Password — Quên mật khẩu",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@techstore.vn\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/forgot-password",
+            "description": "Gửi yêu cầu reset. Response trả về reset_token (mô phỏng — thực tế gửi qua email)."
+          }
+        },
+        {
+          "name": "Reset Password — Đặt lại mật khẩu",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<reset_token_từ_bước_trên>\",\n  \"new_password\": \"newpass123\",\n  \"confirm_password\": \"newpass123\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/reset-password"
+          }
+        },
+        {
+          "name": "[Test] Đăng nhập sai mật khẩu → 401",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"sai_mat_khau\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login",
+            "description": "Kỳ vọng: 401 Unauthorized"
+          }
+        },
+        {
+          "name": "[Test] Truy cập /me không có token → 401",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/auth/me",
+            "description": "Kỳ vọng: 401 Unauthorized"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Account",
+      "item": [
+        {
+          "name": "GET Profile — Xem hồ sơ cá nhân [JWT]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/account/profile"
+          }
+        },
+        {
+          "name": "PUT Profile — Cập nhật hồ sơ [JWT]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullname\": \"Nguyễn Văn Admin\",\n  \"email\": \"admin@techstore.vn\",\n  \"phone\": \"0901234567\",\n  \"address\": \"123 Nguyễn Huệ, Quận 1, TP.HCM\"\n}"
+            },
+            "url": "{{base_url}}/api/account/profile"
+          }
+        },
+        {
+          "name": "POST Change Password — Đổi mật khẩu [JWT]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"12345678@Admin\",\n  \"new_password\": \"NewPass@2024\",\n  \"confirm_password\": \"NewPass@2024\"\n}"
+            },
+            "url": "{{base_url}}/api/account/change-password"
+          }
+        },
+        {
+          "name": "[Test] Đổi mật khẩu sai mật khẩu hiện tại → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"sai_mat_khau\",\n  \"new_password\": \"NewPass123\",\n  \"confirm_password\": \"NewPass123\"\n}"
+            },
+            "url": "{{base_url}}/api/account/change-password",
+            "description": "Kỳ vọng: 401"
+          }
+        },
+        {
+          "name": "Admin: GET Users — Danh sách người dùng [JWT+Admin]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/account/users",
+            "description": "Cần token Admin"
+          }
+        },
+        {
+          "name": "Admin: GET Users/{id} — Chi tiết người dùng [JWT+Admin]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/account/users/2"
+          }
+        },
+        {
+          "name": "Admin: Toggle Active — Khóa/Mở tài khoản [JWT+Admin]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_active\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/account/users/2?do=toggle-active",
+              "query": [{ "key": "do", "value": "toggle-active" }]
+            },
+            "description": "is_active: false = khóa, true = mở khóa"
+          }
+        },
+        {
+          "name": "Admin: Update Role — Đổi quyền [JWT+Admin]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/account/users/2?do=role",
+              "query": [{ "key": "do", "value": "role" }]
+            }
+          }
+        },
+        {
+          "name": "Admin: DELETE User — Xóa tài khoản [JWT+Admin]",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/account/users/99",
+            "description": "Xóa user ID=99. Dùng ID tồn tại thực tế."
+          }
+        },
+        {
+          "name": "[Test] User cố gọi /users → 403",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/account/users",
+            "description": "Đăng nhập bằng user thường trước, kỳ vọng 403 Forbidden"
           }
         }
       ]
@@ -75,46 +283,41 @@
       "name": "📦 Products",
       "item": [
         {
-          "name": "GET - Danh sách sản phẩm",
+          "name": "GET — Danh sách sản phẩm (public)",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/products",
-            "description": "Lấy tất cả sản phẩm kèm tên danh mục"
+            "url": "{{base_url}}/api/products"
           }
         },
         {
-          "name": "GET - Chi tiết sản phẩm",
+          "name": "GET — Chi tiết sản phẩm (public)",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/products/1",
-            "description": "Lấy chi tiết sản phẩm có ID = 1"
+            "url": "{{base_url}}/api/products/1"
           }
         },
         {
-          "name": "GET - Tìm kiếm theo tên",
+          "name": "GET — Tìm kiếm theo tên (public)",
           "request": {
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/products/search?q=iPhone",
               "query": [{ "key": "q", "value": "iPhone" }]
-            },
-            "url": "{{base_url}}/api/products/search?q=iPhone",
-            "description": "Tìm kiếm sản phẩm theo tên"
+            }
           }
         },
         {
-          "name": "GET - Lọc theo danh mục",
+          "name": "GET — Lọc theo danh mục (public)",
           "request": {
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/products/filter?category_id=1",
               "query": [{ "key": "category_id", "value": "1" }]
-            },
-            "description": "Lọc sản phẩm thuộc danh mục ID = 1 (Điện thoại)"
+            }
           }
         },
         {
-          "name": "GET - Sắp xếp theo giá tăng dần",
+          "name": "GET — Sắp xếp theo giá tăng dần (public)",
           "request": {
             "method": "GET",
             "url": {
@@ -124,91 +327,57 @@
           }
         },
         {
-          "name": "GET - Sắp xếp theo giá giảm dần",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/products/sort?order=desc",
-              "query": [{ "key": "order", "value": "desc" }]
-            }
-          }
-        },
-        {
-          "name": "POST - Thêm sản phẩm (Admin)",
+          "name": "POST — Thêm sản phẩm [JWT+Admin]",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Samsung Galaxy S25 Ultra\",\n  \"description\": \"Chip Snapdragon 8 Elite, màn hình 6.9 inch, camera 200MP\",\n  \"price\": 31990000,\n  \"category_id\": 1,\n  \"image\": \"\"\n}"
+              "raw": "{\n  \"name\": \"Samsung Galaxy S25 Ultra\",\n  \"description\": \"Chip Snapdragon 8 Elite, màn hình 6.9 inch\",\n  \"price\": 31990000,\n  \"category_id\": 1,\n  \"image\": \"\"\n}"
             },
-            "url": "{{base_url}}/api/products",
-            "description": "⚠️ Cần đăng nhập với quyền Admin"
+            "url": "{{base_url}}/api/products"
           }
         },
         {
-          "name": "POST - Thêm sản phẩm kèm upload ảnh (Admin)",
-          "request": {
-            "method": "POST",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                { "key": "name", "value": "Xiaomi 15 Pro", "type": "text" },
-                { "key": "description", "value": "Chip Snapdragon 8 Elite, camera Leica 50MP", "type": "text" },
-                { "key": "price", "value": "25990000", "type": "text" },
-                { "key": "category_id", "value": "1", "type": "text" },
-                { "key": "image", "src": [], "type": "file", "description": "Chọn file ảnh .jpg/.png/.webp" }
-              ]
-            },
-            "url": "{{base_url}}/api/products",
-            "description": "Upload ảnh qua form-data. Cần đăng nhập Admin"
-          }
-        },
-        {
-          "name": "PUT - Cập nhật sản phẩm (Admin)",
+          "name": "PUT — Cập nhật sản phẩm [JWT+Admin]",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"iPhone 15 Pro Max (Updated)\",\n  \"description\": \"Chip A17 Pro nâng cấp, RAM 8GB\",\n  \"price\": 28990000,\n  \"category_id\": 1\n}"
+              "raw": "{\n  \"name\": \"iPhone 15 Pro Max (Updated)\",\n  \"description\": \"Chip A17 Pro, RAM 8GB\",\n  \"price\": 28990000,\n  \"category_id\": 1\n}"
             },
-            "url": "{{base_url}}/api/products/1",
-            "description": "Cập nhật sản phẩm ID = 1. Cần quyền Admin"
+            "url": "{{base_url}}/api/products/1"
           }
         },
         {
-          "name": "DELETE - Xóa sản phẩm (Admin)",
+          "name": "DELETE — Xóa sản phẩm [JWT+Admin]",
           "request": {
             "method": "DELETE",
-            "url": "{{base_url}}/api/products/10",
-            "description": "Xóa sản phẩm ID = 10. Cần quyền Admin"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/products/10"
           }
         },
         {
-          "name": "[Validation] POST - Thiếu tên sản phẩm",
+          "name": "[Test] User cố thêm sản phẩm → 403",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"\",\n  \"price\": 1000000,\n  \"category_id\": 1\n}"
+              "raw": "{\n  \"name\": \"Test\",\n  \"price\": 1000,\n  \"category_id\": 1\n}"
             },
             "url": "{{base_url}}/api/products",
-            "description": "Test: Kỳ vọng lỗi 422 - tên không được rỗng"
-          }
-        },
-        {
-          "name": "[Validation] POST - Giá âm",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Test Product\",\n  \"price\": -100,\n  \"category_id\": 1\n}"
-            },
-            "url": "{{base_url}}/api/products",
-            "description": "Test: Kỳ vọng lỗi 422 - giá phải > 0"
+            "description": "Đăng nhập bằng user thường → kỳ vọng 403"
           }
         }
       ]
@@ -217,61 +386,55 @@
       "name": "📁 Categories",
       "item": [
         {
-          "name": "GET - Danh sách danh mục",
+          "name": "GET — Danh sách danh mục (public)",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/categories",
-            "description": "Lấy tất cả danh mục kèm số lượng sản phẩm"
+            "url": "{{base_url}}/api/categories"
           }
         },
         {
-          "name": "GET - Chi tiết danh mục",
+          "name": "GET — Chi tiết danh mục (public)",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/categories/1",
-            "description": "Chi tiết danh mục ID = 1"
+            "url": "{{base_url}}/api/categories/1"
           }
         },
         {
-          "name": "POST - Thêm danh mục (Admin)",
+          "name": "POST — Thêm danh mục [JWT+Admin]",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Màn hình\",\n  \"description\": \"Màn hình máy tính, TV\"\n}"
             },
-            "url": "{{base_url}}/api/categories",
-            "description": "Cần quyền Admin"
+            "url": "{{base_url}}/api/categories"
           }
         },
         {
-          "name": "PUT - Cập nhật danh mục (Admin)",
+          "name": "PUT — Cập nhật danh mục [JWT+Admin]",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Điện thoại thông minh\",\n  \"description\": \"Smartphone cao cấp các hãng\"\n}"
+              "raw": "{\n  \"name\": \"Điện thoại thông minh\",\n  \"description\": \"Smartphone cao cấp\"\n}"
             },
-            "url": "{{base_url}}/api/categories/1",
-            "description": "Cập nhật danh mục ID = 1"
+            "url": "{{base_url}}/api/categories/1"
           }
         },
         {
-          "name": "DELETE - Xóa danh mục (Admin)",
+          "name": "DELETE — Xóa danh mục [JWT+Admin]",
           "request": {
             "method": "DELETE",
-            "url": "{{base_url}}/api/categories/6",
-            "description": "Xóa danh mục ID = 6 (danh mục mới thêm). Sẽ báo lỗi 409 nếu còn sản phẩm"
-          }
-        },
-        {
-          "name": "[Validation] DELETE - Xóa danh mục còn sản phẩm",
-          "request": {
-            "method": "DELETE",
-            "url": "{{base_url}}/api/categories/1",
-            "description": "Test: Kỳ vọng lỗi 409 - không xóa được vì còn sản phẩm"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/categories/6"
           }
         }
       ]
@@ -280,99 +443,73 @@
       "name": "🛒 Cart",
       "item": [
         {
-          "name": "GET - Xem giỏ hàng",
+          "name": "GET — Xem giỏ hàng [JWT]",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/cart",
-            "description": "Cần đăng nhập"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/cart"
           }
         },
         {
-          "name": "GET - Tổng tiền giỏ hàng",
+          "name": "GET — Tổng tiền giỏ hàng [JWT]",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/cart/total",
-            "description": "Lấy subtotal, phí ship, grand total"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/cart/total"
           }
         },
         {
-          "name": "POST - Thêm sản phẩm vào giỏ",
+          "name": "POST — Thêm sản phẩm vào giỏ [JWT]",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"product_id\": 1,\n  \"quantity\": 2\n}"
-            },
-            "url": "{{base_url}}/api/cart",
-            "description": "Thêm sản phẩm ID=1 với số lượng 2"
-          }
-        },
-        {
-          "name": "POST - Thêm nhiều sản phẩm",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"product_id\": 3,\n  \"quantity\": 1\n}"
             },
             "url": "{{base_url}}/api/cart"
           }
         },
         {
-          "name": "PUT - Cập nhật số lượng",
+          "name": "PUT — Cập nhật số lượng [JWT]",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"quantity\": 5\n}"
             },
-            "url": "{{base_url}}/api/cart/1",
-            "description": "Cập nhật số lượng sản phẩm ID=1 thành 5"
+            "url": "{{base_url}}/api/cart/1"
           }
         },
         {
-          "name": "DELETE - Xóa 1 sản phẩm khỏi giỏ",
+          "name": "DELETE — Xóa 1 sản phẩm khỏi giỏ [JWT]",
           "request": {
             "method": "DELETE",
-            "url": "{{base_url}}/api/cart/3",
-            "description": "Xóa sản phẩm ID=3 khỏi giỏ"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/cart/1"
           }
         },
         {
-          "name": "DELETE - Xóa toàn bộ giỏ hàng",
+          "name": "DELETE — Xóa toàn bộ giỏ hàng [JWT]",
           "request": {
             "method": "DELETE",
-            "url": "{{base_url}}/api/cart",
-            "description": "Xóa toàn bộ giỏ hàng"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/cart"
           }
         },
         {
-          "name": "[Validation] POST - Sản phẩm không tồn tại",
+          "name": "[Test] Không có token → 401",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"product_id\": 9999,\n  \"quantity\": 1\n}"
-            },
+            "method": "GET",
             "url": "{{base_url}}/api/cart",
-            "description": "Test: Kỳ vọng lỗi 404"
-          }
-        },
-        {
-          "name": "[Validation] POST - Số lượng = 0",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"product_id\": 1,\n  \"quantity\": 0\n}"
-            },
-            "url": "{{base_url}}/api/cart",
-            "description": "Test: Kỳ vọng lỗi 400"
+            "description": "Kỳ vọng: 401 Unauthorized"
           }
         }
       ]
@@ -381,115 +518,70 @@
       "name": "📋 Orders",
       "item": [
         {
-          "name": "GET - Danh sách đơn hàng (Admin: tất cả)",
+          "name": "GET — Danh sách đơn hàng [JWT]",
           "request": {
             "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
             "url": "{{base_url}}/api/orders",
-            "description": "Admin thấy tất cả, User thấy đơn của mình"
+            "description": "Admin: tất cả đơn. User: chỉ đơn của mình."
           }
         },
         {
-          "name": "GET - Chi tiết đơn hàng",
+          "name": "GET — Chi tiết đơn hàng [JWT]",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/orders/1",
-            "description": "Chi tiết đơn hàng ID = 1 kèm danh sách sản phẩm"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/orders/1"
           }
         },
         {
-          "name": "POST - Tạo đơn hàng từ giỏ",
+          "name": "POST — Tạo đơn hàng [JWT]",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fullname\": \"Nguyễn Văn An\",\n  \"phone\": \"0901234567\",\n  \"address\": \"123 Nguyễn Huệ, Quận 1, TP.HCM\",\n  \"note\": \"Giao giờ hành chính\",\n  \"payment_method\": \"cod\"\n}"
             },
             "url": "{{base_url}}/api/orders",
-            "description": "⚠️ Cần có sản phẩm trong giỏ hàng trước. Thanh toán COD"
+            "description": "Cần có sản phẩm trong giỏ hàng trước."
           }
         },
         {
-          "name": "POST - Tạo đơn hàng (thanh toán chuyển khoản)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"fullname\": \"Trần Thị Bình\",\n  \"phone\": \"0912345678\",\n  \"address\": \"456 Lê Lợi, Quận 3, TP.HCM\",\n  \"note\": \"\",\n  \"payment_method\": \"bank_transfer\"\n}"
-            },
-            "url": "{{base_url}}/api/orders"
-          }
-        },
-        {
-          "name": "PUT - Cập nhật trạng thái (Admin)",
+          "name": "PUT — Cập nhật trạng thái đơn hàng [JWT+Admin]",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"confirmed\"\n}"
             },
             "url": "{{base_url}}/api/orders/1/status",
-            "description": "Trạng thái hợp lệ: pending, confirmed, shipping, delivered, cancelled"
+            "description": "pending → confirmed → shipping → delivered | cancelled"
           }
         },
         {
-          "name": "PUT - Cập nhật → shipping",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"shipping\"\n}"
-            },
-            "url": "{{base_url}}/api/orders/1/status"
-          }
-        },
-        {
-          "name": "PUT - Cập nhật → delivered",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"delivered\"\n}"
-            },
-            "url": "{{base_url}}/api/orders/1/status"
-          }
-        },
-        {
-          "name": "DELETE - Hủy đơn hàng",
+          "name": "DELETE — Hủy đơn hàng [JWT]",
           "request": {
             "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
             "url": "{{base_url}}/api/orders/2",
-            "description": "Chỉ hủy được đơn ở trạng thái pending/confirmed"
+            "description": "Chỉ hủy được đơn pending/confirmed của chính mình (User)."
           }
         },
         {
-          "name": "[Validation] POST - Giỏ hàng rỗng",
+          "name": "[Test] User xem đơn của người khác → 403",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"fullname\": \"Test\",\n  \"phone\": \"0901234567\",\n  \"address\": \"Test Address\",\n  \"payment_method\": \"cod\"\n}"
-            },
-            "url": "{{base_url}}/api/orders",
-            "description": "Test: Kỳ vọng lỗi 400 - giỏ hàng rỗng (xóa giỏ trước)"
-          }
-        },
-        {
-          "name": "[Validation] PUT - Trạng thái không hợp lệ",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"invalid_status\"\n}"
-            },
-            "url": "{{base_url}}/api/orders/1/status",
-            "description": "Test: Kỳ vọng lỗi 422"
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/orders/1",
+            "description": "Đăng nhập bằng user thường, kỳ vọng 403 nếu đơn không phải của họ."
           }
         }
       ]
@@ -498,63 +590,56 @@
       "name": "💳 Payments",
       "item": [
         {
-          "name": "POST - Thanh toán COD",
+          "name": "POST — Thanh toán COD [JWT]",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"order_id\": 1,\n  \"payment_method\": \"cod\"\n}"
             },
-            "url": "{{base_url}}/api/payments",
-            "description": "Thanh toán khi nhận hàng"
+            "url": "{{base_url}}/api/payments"
           }
         },
         {
-          "name": "POST - Thanh toán chuyển khoản",
+          "name": "POST — Thanh toán chuyển khoản [JWT]",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"order_id\": 2,\n  \"payment_method\": \"bank_transfer\"\n}"
             },
-            "url": "{{base_url}}/api/payments",
-            "description": "Thanh toán chuyển khoản - nhận thông tin tài khoản ngân hàng"
+            "url": "{{base_url}}/api/payments"
           }
         },
         {
-          "name": "POST - Thanh toán ví điện tử",
+          "name": "POST — Thanh toán ví điện tử [JWT]",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"order_id\": 3,\n  \"payment_method\": \"e_wallet\"\n}"
             },
-            "url": "{{base_url}}/api/payments",
-            "description": "Thanh toán ví điện tử - mô phỏng thành công ngay"
+            "url": "{{base_url}}/api/payments"
           }
         },
         {
-          "name": "GET - Kiểm tra trạng thái thanh toán",
+          "name": "GET — Trạng thái thanh toán [JWT]",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/payments/1",
-            "description": "Kiểm tra trạng thái thanh toán của đơn hàng ID = 1"
-          }
-        },
-        {
-          "name": "[Validation] POST - Thanh toán lại đơn đã thanh toán",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"order_id\": 1,\n  \"payment_method\": \"cod\"\n}"
-            },
-            "url": "{{base_url}}/api/payments",
-            "description": "Test: Kỳ vọng lỗi 409 - không thanh toán lại đơn đã thanh toán"
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{base_url}}/api/payments/1"
           }
         }
       ]

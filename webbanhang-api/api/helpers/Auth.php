@@ -1,48 +1,116 @@
 <?php
 /**
- * Auth Helper — kiểm tra session, phân quyền cho API
+ * Auth Helper — Xác thực và phân quyền dựa trên JWT.
+ *
+ * Luồng:
+ *   1. Client gửi: Authorization: Bearer <token>
+ *   2. Auth::requireLogin()  → verify token, trả 401 nếu thiếu/sai
+ *   3. Auth::requireAdmin()  → kiểm tra role = 'admin', trả 403 nếu không đủ quyền
  */
 class Auth
 {
-    public static function init(): void
+    /** Payload đã giải mã, cache trong request hiện tại */
+    private static ?array $currentPayload = null;
+
+    // ----------------------------------------------------------------
+    //  Lấy payload từ Bearer token (cache để không gọi lại nhiều lần)
+    // ----------------------------------------------------------------
+    public static function getPayload(): ?array
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (self::$currentPayload !== null) {
+            return self::$currentPayload;
         }
+
+        $token = JwtHelper::getBearerToken();
+        if ($token === null) {
+            return null;
+        }
+
+        self::$currentPayload = JwtHelper::verify($token);
+        return self::$currentPayload;
     }
 
+    // ----------------------------------------------------------------
+    //  Kiểm tra đã đăng nhập chưa
+    // ----------------------------------------------------------------
     public static function isLoggedIn(): bool
     {
-        self::init();
-        return isset($_SESSION['user_id']) || isset($_SESSION['username']);
+        return self::getPayload() !== null;
     }
 
+    // ----------------------------------------------------------------
+    //  Kiểm tra có phải Admin không
+    // ----------------------------------------------------------------
     public static function isAdmin(): bool
     {
-        self::init();
-        return self::isLoggedIn()
-            && isset($_SESSION['role'])
-            && $_SESSION['role'] === 'admin';
+        $payload = self::getPayload();
+        return $payload !== null && isset($payload['role']) && $payload['role'] === 'admin';
     }
 
+    // ----------------------------------------------------------------
+    //  Bắt buộc đăng nhập — trả lỗi nếu chưa có token hợp lệ
+    // ----------------------------------------------------------------
     public static function requireLogin(): void
     {
-        if (!self::isLoggedIn()) {
-            Response::error('Bạn cần đăng nhập để thực hiện thao tác này.', 401);
+        $token = JwtHelper::getBearerToken();
+
+        if ($token === null) {
+            Response::error('Unauthorized. Vui lòng đăng nhập và gửi token trong header: Authorization: Bearer <token>', 401);
         }
+
+        $payload = JwtHelper::verify($token);
+        if ($payload === null) {
+            Response::error('Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.', 401);
+        }
+
+        self::$currentPayload = $payload;
     }
 
+    // ----------------------------------------------------------------
+    //  Bắt buộc quyền Admin
+    // ----------------------------------------------------------------
     public static function requireAdmin(): void
     {
+        self::requireLogin();
+
         if (!self::isAdmin()) {
-            Response::error('Bạn không có quyền thực hiện thao tác này.', 403);
+            Response::error('Forbidden. Chức năng này chỉ dành cho Admin.', 403);
         }
     }
 
+    // ----------------------------------------------------------------
+    //  Lấy ID người dùng hiện tại từ token
+    // ----------------------------------------------------------------
     public static function currentUserId(): ?int
     {
-        self::init();
-        return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+        $payload = self::getPayload();
+        return isset($payload['user_id']) ? (int)$payload['user_id'] : null;
+    }
+
+    // ----------------------------------------------------------------
+    //  Lấy username người dùng hiện tại từ token
+    // ----------------------------------------------------------------
+    public static function currentUsername(): ?string
+    {
+        $payload = self::getPayload();
+        return $payload['username'] ?? null;
+    }
+
+    // ----------------------------------------------------------------
+    //  Lấy role người dùng hiện tại từ token
+    // ----------------------------------------------------------------
+    public static function currentRole(): ?string
+    {
+        $payload = self::getPayload();
+        return $payload['role'] ?? null;
+    }
+
+    // ----------------------------------------------------------------
+    //  Giữ lại để tương thích với code cũ (CartApiController gọi Auth::init())
+    // ----------------------------------------------------------------
+    public static function init(): void
+    {
+        // Không cần làm gì — JWT không dùng session
     }
 }
 ?>
